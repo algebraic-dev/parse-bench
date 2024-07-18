@@ -12,27 +12,6 @@ structure HttpRequest where
   headers : Array (String × String)
   data: Array ByteArray
 
--- Some combinators
-
-def consume (n: Nat) : Parser ByteArray := fun it =>
-  let substr := it.array.extract it.idx (it.idx + n)
-  if substr.size ≠ n
-    then .error it s!"expected: {n} bytes"
-    else .success {it with idx := it.idx + n} substr
-
-def string (s : String) : Parser String := fun it => Id.run do
-  let arr := s.toUTF8
-  let substr := it.array.extract it.idx (it.idx + arr.size)
-
-  if arr.size != substr.size then
-    return .error it s!"expected: {s}"
-
-  for i in [0:arr.size] do
-    if arr[i]! ≠ substr[i]! then
-      return .error it s!"expected: {s}"
-
-  return .success (it.forward arr.size) s
-
 @[inline]
 def char (c: Char) : Parser Unit := skipByte c.toUInt8
 
@@ -47,23 +26,25 @@ separators = "(" | ")" | "<" | ">" | "@"
            | "{" | "}" | SP | HT
 --/
 def isTokenCharacter (c : UInt8) : Bool :=
-  let separators := #['(', ')', '<', '>', '@', ',', ';', ':', '"', '/', '[', ']', '?', '=', '{', '}', ' ', '\t']
-  let separators := separators.map (·.toUInt8)
-  c.toNat > 31 ∧ c ∉ separators
+  --let separators := #['(', ')', '<', '>', '@', ',', ';', ':', '"', '/', '[', ']', '?', '=', '{', '}', ' ']
+  c > 31 && c != '('.toUInt8 && c != ')'.toUInt8 && c != '<'.toUInt8 && c != '>'.toUInt8 &&
+    c != '@'.toUInt8 && c != ','.toUInt8 && c != ';'.toUInt8 && c != ':'.toUInt8 &&
+    c != '"'.toUInt8 && c != '/'.toUInt8 && c != '['.toUInt8 && c != ']'.toUInt8 &&
+    c != '?'.toUInt8 && c != '='.toUInt8 && c != '{'.toUInt8 && c != '}'.toUInt8 && c != ' '.toUInt8
 
 @[inline]
 def token : Parser String := many1Chars (Char.ofUInt8 <$> satisfy isTokenCharacter)
 
 def methodParser : Parser String
-  := string "HEAD"
-  <|> string "GET"
-  <|> string "POST"
-  <|> string "PUT"
-  <|> string "DELETE"
-  <|> string "OPTIONS"
-  <|> string "CONNECT"
-  <|> string "TRACE"
-  <|> string "PATCH"
+  := pstring "HEAD"
+  <|> pstring "GET"
+  <|> pstring "POST"
+  <|> pstring "PUT"
+  <|> pstring "DELETE"
+  <|> pstring "OPTIONS"
+  <|> pstring "CONNECT"
+  <|> pstring "TRACE"
+  <|> pstring "PATCH"
 
 @[inline]
 def spaces : Parser Unit :=
@@ -107,7 +88,7 @@ def requestLineParser : Parser (String × String × (Nat × Nat)) := do
 def chunk : Parser ByteArray := do
     let size ← decodeHex <$> many1Chars hexDigit
     skipString "\r\n"
-    let data ← consume size
+    let data ← take size
     skipString "\r\n"
     return data
   where
@@ -136,4 +117,7 @@ def parse (input: ByteArray) : IO Unit := do
 
 def main : IO Unit := do
   let input ← IO.FS.readBinFile "./test.txt"
+  let t1 ← IO.monoMsNow
   parse input
+  let t2 ← IO.monoMsNow
+  IO.println s!"Parsing took {t2 - t1}ms"
