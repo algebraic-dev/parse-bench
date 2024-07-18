@@ -183,6 +183,7 @@ def Method.ofNat : Nat → String
   | 6 => "CONNECT"
   | 7 => "TRACE"
   | 8 => "PATCH"
+  -- Not the best approach but its impossible to happen :P
   | _ => "??"
 
 @[inline]
@@ -192,7 +193,7 @@ private def onRequestLine (method: Nat) (major: Nat) (minor: Nat) (acc: State) :
 
 @[inline]
 private def onEnd (state: State) : IO (State × Nat) := do
-  IO.println s!"Parsed {state.req.data.size} chunks and {state.req.headers.size} headers"
+  IO.println s!"[Parse.lean] Parsed {state.req.data.size} chunks and {state.req.headers.size} headers"
   pure (state, 0)
 
 def create : HttpGrammar.Data State :=
@@ -200,23 +201,14 @@ def create : HttpGrammar.Data State :=
     (onEndField := endField)
     (onEndRequest := onEnd)
     (onEndRequestLine := onRequestLine)
+    (onChunkData := toByteArray onBody)
     (onUrl := toString (λval acc => pure ({acc with req := {acc.req with uri := acc.req.uri.append val}}, 0)))
-    (onChunkData := toByteArray (onBody))
     (onProp := toString (λval acc => pure ({acc with prop := acc.prop.append val}, 0)))
     (onValue := toString (λval acc => pure ({acc with value := acc.value.append val}, 0)))
     {}
   where
-    @[inline]
-    toByteArray func st en bt data := func (bt.extract st en) data
-
-    @[inline]
-    toString func st en bt data := func (String.fromAscii $ bt.extract st en) data
-
-    @[inline]
-    appendOr (data: Option String) (str: String) : Option String :=
-      match data with
-      | some res => some $ res.append str
-      | none => some str
+    @[inline] toByteArray func st en bt data := func (bt.extract st en) data
+    @[inline] toString func st en bt data := func (String.fromAscii $ bt.extract st en) data
 
 def parse (ba: ByteArray) : IO Unit := do
   let data := create
@@ -224,6 +216,7 @@ def parse (ba: ByteArray) : IO Unit := do
 
   if res.error ≠ 0 then
     IO.println s!"error {res.error} {res.state}"
+    IO.Process.exit 1
 
 def main : IO Unit := do
   let input ← IO.FS.readBinFile "./test.txt"
