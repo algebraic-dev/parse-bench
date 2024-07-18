@@ -18,7 +18,7 @@ def consume (n: Nat) : Parser ByteArray := fun it =>
   let substr := it.array.extract it.idx (it.idx + n)
   if substr.size ≠ n
     then .error it s!"expected: {n} bytes"
-    else .success (it.forward n) substr
+    else .success {it with idx := it.idx + n} substr
 
 def string (s : String) : Parser String := fun it => Id.run do
   let arr := s.toUTF8

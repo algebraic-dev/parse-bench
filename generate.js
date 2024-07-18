@@ -1,9 +1,10 @@
 const chunkSizeLimit = 10000;
-const sizeLimit = 520000000;
+const sizeLimit = 4332323;
+const headersLimit = 332442;
 
 const generateRandomChunkedRequest = (size) => {
-    const method = 'HEAD';
-    const path = '/atapo';
+    const method = 'POST';
+    const path = '/some-huge-path';
     const httpVersion = 'HTTP/1.1';
     const contentType = 'text/plain';
 
@@ -33,7 +34,7 @@ const generateRandomChunkedRequest = (size) => {
     process.stdout.write(`Content-Type: ${contentType}\r\n`);
     process.stdout.write(`Transfer-Encoding: chunked\r\n`);
 
-    const randomHeaders = generateRandomHeaders(Math.floor(Math.random() * 2304));
+    const randomHeaders = generateRandomHeaders(Math.floor(Math.random() * headersLimit));
     process.stdout.write(randomHeaders);
     process.stdout.write(`\r\n`);
 
