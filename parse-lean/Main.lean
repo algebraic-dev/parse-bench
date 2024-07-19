@@ -220,4 +220,7 @@ def parse (ba: ByteArray) : IO Unit := do
 
 def main : IO Unit := do
   let input ← IO.FS.readBinFile "./test.txt"
+  let t1 ← IO.monoMsNow
   parse input
+  let t2 ← IO.monoMsNow
+  IO.println s!"Parsing took {t2 - t1}ms"
